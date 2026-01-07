@@ -326,30 +326,7 @@ const App = () => {
     };
   }, [gameState, handleInteraction, player1Char, player2Char]);
   
-  const handleMobileMove = (playerNum, dir) => {
-    const char = playerNum === 1 ? player1Char : player2Char;
-    const setPos = char === 'ahmed' ? setAhmedPos : setRoroPos;
-    const setDir = char === 'ahmed' ? setAhmedDir : setRoroDir;
-    const setMoving = char === 'ahmed' ? setAhmedMoving : setRoroMoving;
-    
-    const speed = 5;
-    const state = gameStateRef.current;
-    let minY = state === 'outside' ? 68 : 55;
-    let maxY = state === 'outside' ? 95 : 90;
-    
-    setMoving(true);
-    setTimeout(() => setMoving(false), 150);
-    
-    if (dir === 'up') setPos(p => ({ ...p, y: Math.max(minY, p.y - speed) }));
-    if (dir === 'down') setPos(p => ({ ...p, y: Math.min(maxY, p.y + speed) }));
-    if (dir === 'left') { setDir('left'); setPos(p => ({ ...p, x: Math.max(5, p.x - speed) })); }
-    if (dir === 'right') { setDir('right'); setPos(p => ({ ...p, x: Math.min(95, p.x + speed) })); }
-  };
-  
-  const handleMobileInteract = (playerNum) => {
-    const char = playerNum === 1 ? player1Char : player2Char;
-    handleInteraction(char);
-  };
+  // Mobile controls now use touch gestures instead of buttons
   
   const Character = ({ type, position, direction, isMoving, playerNum }) => {
     const bounce = isMoving ? Math.sin(animFrame * 0.5) * 5 : 0;
@@ -440,48 +417,96 @@ const App = () => {
   };
   
   const MobileCtrl = ({ playerNum, side }) => {
-    const char = playerNum === 1 ? player1Char : player2Char;
-    return (
-      <div style={{
-        position: 'absolute',
-        bottom: '90px',
-        [side]: '10px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '3px',
-        zIndex: 200,
-      }}>
-        <div style={{
-          background: char === 'ahmed' ? '#FF8F00' : '#D81B60',
-          color: 'white',
-          padding: '2px 8px',
-          borderRadius: '8px',
-          fontSize: '10px',
-          fontWeight: 'bold',
-        }}>
-          🎮{playerNum} {char === 'ahmed' ? 'أحمد' : 'رورو'}
-        </div>
-        <button onClick={() => handleMobileMove(playerNum, 'up')} style={mobBtn}>⬆️</button>
-        <div style={{ display: 'flex', gap: '3px' }}>
-          <button onClick={() => handleMobileMove(playerNum, 'left')} style={mobBtn}>⬅️</button>
-          <button onClick={() => handleMobileInteract(playerNum)} style={{...mobBtn, background: '#4CAF50'}}>✓</button>
-          <button onClick={() => handleMobileMove(playerNum, 'right')} style={mobBtn}>➡️</button>
-        </div>
-        <button onClick={() => handleMobileMove(playerNum, 'down')} style={mobBtn}>⬇️</button>
-      </div>
-    );
+    // Touch controls are now handled by the main game area
+    return null;
   };
   
-  const mobBtn = {
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
-    border: 'none',
-    background: 'rgba(255,255,255,0.9)',
-    fontSize: '16px',
-    cursor: 'pointer',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+  const mobBtn = {}; // No longer needed
+  
+  // Touch handling state
+  const lastTapRef = useRef({ time: 0, x: 0, y: 0 });
+  const touchStartRef = useRef({ x: 0, y: 0, player: null });
+  
+  const handleTouchStart = (e) => {
+    if (!['outside', 'livingRoom', 'bedroom', 'kitchen'].includes(gameState)) return;
+    
+    const touch = e.touches[0];
+    const screenWidth = window.innerWidth;
+    const isLeftSide = touch.clientX < screenWidth / 2;
+    const playerNum = isLeftSide ? 1 : 2;
+    
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      player: playerNum
+    };
+    
+    // Check for double tap
+    const now = Date.now();
+    const timeDiff = now - lastTapRef.current.time;
+    const distance = Math.sqrt(
+      Math.pow(touch.clientX - lastTapRef.current.x, 2) +
+      Math.pow(touch.clientY - lastTapRef.current.y, 2)
+    );
+    
+    if (timeDiff < 300 && distance < 50) {
+      // Double tap - interact!
+      const char = playerNum === 1 ? player1Char : player2Char;
+      handleInteraction(char);
+      lastTapRef.current = { time: 0, x: 0, y: 0 };
+    } else {
+      lastTapRef.current = { time: now, x: touch.clientX, y: touch.clientY };
+    }
+  };
+  
+  const handleTouchMove = (e) => {
+    if (!touchStartRef.current.player) return;
+    e.preventDefault();
+    
+    const touch = e.touches[0];
+    const playerNum = touchStartRef.current.player;
+    const char = playerNum === 1 ? player1Char : player2Char;
+    
+    const setPos = char === 'ahmed' ? setAhmedPos : setRoroPos;
+    const setDir = char === 'ahmed' ? setAhmedDir : setRoroDir;
+    const setMoving = char === 'ahmed' ? setAhmedMoving : setRoroMoving;
+    
+    // Calculate movement
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    
+    // Update direction
+    if (Math.abs(deltaX) > 5) {
+      setDir(deltaX > 0 ? 'right' : 'left');
+    }
+    
+    // Convert to percentage movement
+    const moveX = (deltaX / window.innerWidth) * 100;
+    const moveY = (deltaY / window.innerHeight) * 100;
+    
+    const state = gameStateRef.current;
+    const minY = state === 'outside' ? 68 : 55;
+    const maxY = state === 'outside' ? 95 : 90;
+    
+    setPos(p => ({
+      x: Math.max(5, Math.min(95, p.x + moveX)),
+      y: Math.max(minY, Math.min(maxY, p.y + moveY))
+    }));
+    
+    setMoving(true);
+    
+    // Update start position for continuous movement
+    touchStartRef.current.x = touch.clientX;
+    touchStartRef.current.y = touch.clientY;
+  };
+  
+  const handleTouchEnd = () => {
+    if (touchStartRef.current.player) {
+      const char = touchStartRef.current.player === 1 ? player1Char : player2Char;
+      const setMoving = char === 'ahmed' ? setAhmedMoving : setRoroMoving;
+      setMoving(false);
+    }
+    touchStartRef.current = { x: 0, y: 0, player: null };
   };
   
   // Start Screen
@@ -648,13 +673,19 @@ const App = () => {
   const p2Char = player2Char;
   
   return (
-    <div style={{
-      width: '100%',
-      height: '100vh',
-      position: 'relative',
-      overflow: 'hidden',
-      fontFamily: 'Cairo, sans-serif',
-    }}>
+    <div 
+      style={{
+        width: '100%',
+        height: '100vh',
+        position: 'relative',
+        overflow: 'hidden',
+        fontFamily: 'Cairo, sans-serif',
+        touchAction: 'none',
+      }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {gameState === 'outside' && (
         <div style={{ position: 'absolute', width: '100%', height: '100%' }}>
           <img src="/assets/landscape.png" alt="Landscape"
@@ -961,8 +992,53 @@ const App = () => {
         )}
       </div>
       
-      <MobileCtrl playerNum={1} side="left" />
-      <MobileCtrl playerNum={2} side="right" />
+      {/* Touch zone indicators for mobile */}
+      <div style={{
+        position: 'absolute',
+        bottom: '60px',
+        left: '10px',
+        background: player1Char === 'ahmed' ? 'rgba(255,143,0,0.2)' : 'rgba(216,27,96,0.2)',
+        border: `2px dashed ${player1Char === 'ahmed' ? '#FF8F00' : '#D81B60'}`,
+        borderRadius: '15px',
+        padding: '10px 15px',
+        zIndex: 150,
+      }}>
+        <div style={{ fontWeight: 'bold', fontSize: '12px', color: player1Char === 'ahmed' ? '#FF8F00' : '#D81B60' }}>
+          🎮1 {player1Char === 'ahmed' ? 'أحمد' : 'رورو'}
+        </div>
+        <div style={{ fontSize: '10px', color: '#666' }}>اسحب للتحريك</div>
+        <div style={{ fontSize: '10px', color: '#666' }}>انقر مرتين للتفاعل</div>
+      </div>
+      
+      <div style={{
+        position: 'absolute',
+        bottom: '60px',
+        right: '10px',
+        background: player2Char === 'ahmed' ? 'rgba(255,143,0,0.2)' : 'rgba(216,27,96,0.2)',
+        border: `2px dashed ${player2Char === 'ahmed' ? '#FF8F00' : '#D81B60'}`,
+        borderRadius: '15px',
+        padding: '10px 15px',
+        zIndex: 150,
+      }}>
+        <div style={{ fontWeight: 'bold', fontSize: '12px', color: player2Char === 'ahmed' ? '#FF8F00' : '#D81B60' }}>
+          🎮2 {player2Char === 'ahmed' ? 'أحمد' : 'رورو'}
+        </div>
+        <div style={{ fontSize: '10px', color: '#666' }}>اسحب للتحريك</div>
+        <div style={{ fontSize: '10px', color: '#666' }}>انقر مرتين للتفاعل</div>
+      </div>
+      
+      {/* Screen divider line */}
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        height: '60%',
+        width: '2px',
+        background: 'rgba(0,0,0,0.1)',
+        zIndex: 5,
+        pointerEvents: 'none',
+      }} />
       
       <div style={{
         position: 'absolute',
@@ -971,12 +1047,13 @@ const App = () => {
         transform: 'translateX(-50%)',
         background: 'rgba(0,0,0,0.75)',
         color: 'white',
-        padding: '5px 15px',
-        borderRadius: '15px',
-        fontSize: '10px',
+        padding: '8px 20px',
+        borderRadius: '20px',
+        fontSize: '11px',
         zIndex: 100,
+        textAlign: 'center',
       }}>
-        🎮1 ({p1Char === 'ahmed' ? 'أحمد' : 'رورو'}): WASD+E | 🎮2 ({p2Char === 'ahmed' ? 'أحمد' : 'رورو'}): ⬆️⬇️⬅️➡️+Space
+        📱 الشمال: 🎮1 | اليمين: 🎮2 | اسحب = تحريك | نقرتين = تفاعل
       </div>
       
       <style>{`
@@ -987,6 +1064,18 @@ const App = () => {
         @keyframes bounce {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-10px); }
+        }
+        
+        /* Touch-friendly buttons */
+        button {
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+          user-select: none;
+        }
+        
+        /* Prevent zoom on double tap */
+        * {
+          touch-action: manipulation;
         }
       `}</style>
     </div>
