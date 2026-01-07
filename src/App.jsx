@@ -370,22 +370,22 @@ const App = () => {
           bottom: '0',
           left: '50%',
           transform: 'translateX(-50%)',
-          width: '70px',
-          height: '18px',
+          width: '100px',
+          height: '25px',
           background: 'radial-gradient(ellipse, rgba(0,0,0,0.3) 0%, transparent 70%)',
           borderRadius: '50%',
         }} />
         
         <div style={{
           position: 'absolute',
-          top: '-32px',
+          top: '-35px',
           left: '50%',
           transform: 'translateX(-50%)',
           background: type === 'ahmed' ? '#FF8F00' : '#D81B60',
           color: 'white',
-          padding: '3px 10px',
-          borderRadius: '10px',
-          fontSize: '11px',
+          padding: '4px 12px',
+          borderRadius: '12px',
+          fontSize: '13px',
           fontWeight: 'bold',
           whiteSpace: 'nowrap',
         }}>
@@ -396,7 +396,7 @@ const App = () => {
           transform: `scaleX(${direction === 'left' ? -1 : 1}) translateY(${-bounce + breathe}px)`,
           transformOrigin: 'bottom center',
         }}>
-          <img src={`/assets/${type === 'ahmed' ? 'Ahmed' : 'Roro'}.png`} alt={type} style={{ height: '140px' }} />
+          <img src={`/assets/${type === 'ahmed' ? 'Ahmed' : 'Roro'}.png`} alt={type} style={{ height: '220px' }} />
         </div>
       </div>
     );
@@ -415,12 +415,12 @@ const App = () => {
       background: deleteMode ? 'rgba(255,152,0,0.1)' : 'transparent',
       cursor: deleteMode ? 'pointer' : 'default',
     }}>
-      <img src={`/assets/${plant.type}.png`} alt={plant.type} style={{ height: '80px' }} />
+      <img src={`/assets/${plant.type}.png`} alt={plant.type} style={{ height: '100px' }} />
     </div>
   );
   
   const FurnitureItem = ({ item }) => {
-    const sizes = { sofa: '180px', table: '140px', lamp: '160px', bed: '200px', fridge: '180px', stove: '160px' };
+    const sizes = { sofa: '250px', table: '180px', lamp: '200px', bed: '280px', fridge: '240px', stove: '200px' };
     return (
       <div style={{
         position: 'absolute',
@@ -690,7 +690,7 @@ const App = () => {
           transform: 'translateX(-50%)',
           zIndex: 30,
         }}>
-          <img src="/assets/Home.png" alt="House" style={{ height: '180px' }} />
+          <img src="/assets/Home.png" alt="House" style={{ height: '250px' }} />
           {houseOverlay !== 'none' && (
             <div style={{
               position: 'absolute',
