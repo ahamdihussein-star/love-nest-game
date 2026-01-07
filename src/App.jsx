@@ -370,22 +370,22 @@ const App = () => {
           bottom: '0',
           left: '50%',
           transform: 'translateX(-50%)',
-          width: '100px',
-          height: '25px',
+          width: '180px',
+          height: '45px',
           background: 'radial-gradient(ellipse, rgba(0,0,0,0.3) 0%, transparent 70%)',
           borderRadius: '50%',
         }} />
         
         <div style={{
           position: 'absolute',
-          top: '-35px',
+          top: '-45px',
           left: '50%',
           transform: 'translateX(-50%)',
           background: type === 'ahmed' ? '#FF8F00' : '#D81B60',
           color: 'white',
-          padding: '4px 12px',
-          borderRadius: '12px',
-          fontSize: '13px',
+          padding: '6px 16px',
+          borderRadius: '15px',
+          fontSize: '15px',
           fontWeight: 'bold',
           whiteSpace: 'nowrap',
         }}>
@@ -396,7 +396,7 @@ const App = () => {
           transform: `scaleX(${direction === 'left' ? -1 : 1}) translateY(${-bounce + breathe}px)`,
           transformOrigin: 'bottom center',
         }}>
-          <img src={`/assets/${type === 'ahmed' ? 'Ahmed' : 'Roro'}.png`} alt={type} style={{ height: '220px' }} />
+          <img src={`/assets/${type === 'ahmed' ? 'Ahmed' : 'Roro'}.png`} alt={type} style={{ height: '500px' }} />
         </div>
       </div>
     );
@@ -415,12 +415,12 @@ const App = () => {
       background: deleteMode ? 'rgba(255,152,0,0.1)' : 'transparent',
       cursor: deleteMode ? 'pointer' : 'default',
     }}>
-      <img src={`/assets/${plant.type}.png`} alt={plant.type} style={{ height: '100px' }} />
+      <img src={`/assets/${plant.type}.png`} alt={plant.type} style={{ height: '180px' }} />
     </div>
   );
   
   const FurnitureItem = ({ item }) => {
-    const sizes = { sofa: '250px', table: '180px', lamp: '200px', bed: '280px', fridge: '240px', stove: '200px' };
+    const sizes = { sofa: '500px', table: '380px', lamp: '450px', bed: '550px', fridge: '500px', stove: '420px' };
     return (
       <div style={{
         position: 'absolute',
@@ -690,7 +690,7 @@ const App = () => {
           transform: 'translateX(-50%)',
           zIndex: 30,
         }}>
-          <img src="/assets/Home.png" alt="House" style={{ height: '250px' }} />
+          <img src="/assets/Home.png" alt="House" style={{ height: '400px' }} />
           {houseOverlay !== 'none' && (
             <div style={{
               position: 'absolute',
@@ -735,16 +735,16 @@ const App = () => {
         <div style={{
           position: 'absolute',
           left: `${ahmedPos.x + 5}%`,
-          top: `${ahmedPos.y - 15}%`,
+          top: `${ahmedPos.y - 25}%`,
           zIndex: 600,
           animation: 'bounce 0.5s infinite',
           pointerEvents: 'none',
           filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
         }}>
           {movingItem.type === 'plant' ? (
-            <img src={`/assets/${movingItem.data.type}.png`} alt="moving" style={{ height: '50px', opacity: 0.9 }} />
+            <img src={`/assets/${movingItem.data.type}.png`} alt="moving" style={{ height: '100px', opacity: 0.9 }} />
           ) : (
-            <img src={`/assets/${movingItem.data.type}.png`} alt="moving" style={{ height: '60px', opacity: 0.9 }} />
+            <img src={`/assets/${movingItem.data.type}.png`} alt="moving" style={{ height: '120px', opacity: 0.9 }} />
           )}
         </div>
       )}
