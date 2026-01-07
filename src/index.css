@@ -2,6 +2,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html, body {
@@ -13,12 +14,14 @@ html, body {
   height: 100%;
   touch-action: none;
   -webkit-overflow-scrolling: none;
+  overscroll-behavior: none;
 }
 
 #root {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  touch-action: none;
 }
 
 @keyframes float {

@@ -329,8 +329,8 @@ const App = () => {
   // Mobile controls now use touch gestures instead of buttons
   
   const Character = ({ type, position, direction, isMoving, playerNum }) => {
-    const bounce = isMoving ? Math.sin(animFrame * 0.5) * 3 : 0;
-    const breathe = !isMoving ? Math.sin(animFrame * 0.1) * 1.5 : 0;
+    const bounce = isMoving ? Math.sin(animFrame * 0.4) * 2 : 0;
+    const breathe = !isMoving ? Math.sin(animFrame * 0.08) * 1 : 0;
     const controlKey = playerNum === 1 ? 'E' : 'Space';
     
     return (
@@ -340,7 +340,7 @@ const App = () => {
         top: `${position.y}%`,
         transform: 'translate(-50%, -100%)',
         zIndex: Math.floor(position.y) + 10,
-        transition: 'left 0.08s linear, top 0.08s linear',
+        transition: 'left 0.05s ease-out, top 0.05s ease-out',
       }}>
         <div style={{
           position: 'absolute',
@@ -416,134 +416,131 @@ const App = () => {
     );
   };
   
-  // Mobile joystick controls
-  const [activeTouch, setActiveTouch] = useState({ player1: null, player2: null });
+  // Better touch controls
+  const lastTapRef = useRef({ time: 0, player: null });
+  const touchActiveRef = useRef({ player1: null, player2: null });
+  const animationFrameRef = useRef(null);
+  const targetPosRef = useRef({ player1: null, player2: null });
   
-  const MobileJoystick = ({ playerNum, side }) => {
-    const char = playerNum === 1 ? player1Char : player2Char;
-    const holdInterval = useRef(null);
-    
-    const startMove = (dir) => {
-      doMove(dir);
-      holdInterval.current = setInterval(() => doMove(dir), 50);
-    };
-    
-    const stopMove = () => {
-      if (holdInterval.current) {
-        clearInterval(holdInterval.current);
-        holdInterval.current = null;
-      }
-      const setMoving = char === 'ahmed' ? setAhmedMoving : setRoroMoving;
-      setMoving(false);
-    };
-    
-    const doMove = (dir) => {
+  // Smooth movement using requestAnimationFrame
+  const smoothMove = useCallback(() => {
+    ['player1', 'player2'].forEach(player => {
+      const target = targetPosRef.current[player];
+      if (!target) return;
+      
+      const char = player === 'player1' ? player1Char : player2Char;
+      const currentPos = char === 'ahmed' ? ahmedPosRef.current : roroPosRef.current;
       const setPos = char === 'ahmed' ? setAhmedPos : setRoroPos;
       const setDir = char === 'ahmed' ? setAhmedDir : setRoroDir;
       const setMoving = char === 'ahmed' ? setAhmedMoving : setRoroMoving;
       
-      const speed = 3;
       const state = gameStateRef.current;
       const minY = state === 'outside' ? 68 : 55;
       const maxY = state === 'outside' ? 95 : 90;
       
-      setMoving(true);
+      // Calculate smooth interpolation
+      const speed = 0.15;
+      const dx = (target.x - currentPos.x) * speed;
+      const dy = (target.y - currentPos.y) * speed;
       
-      if (dir === 'up') setPos(p => ({ ...p, y: Math.max(minY, p.y - speed) }));
-      if (dir === 'down') setPos(p => ({ ...p, y: Math.min(maxY, p.y + speed) }));
-      if (dir === 'left') { setDir('left'); setPos(p => ({ ...p, x: Math.max(5, p.x - speed) })); }
-      if (dir === 'right') { setDir('right'); setPos(p => ({ ...p, x: Math.min(95, p.x + speed) })); }
-    };
-    
-    const doInteract = () => {
-      handleInteraction(char);
-    };
-    
-    const btnStyle = {
-      width: '44px',
-      height: '44px',
-      borderRadius: '50%',
-      border: 'none',
-      background: 'rgba(255,255,255,0.85)',
-      fontSize: '18px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-      cursor: 'pointer',
-      userSelect: 'none',
-      WebkitUserSelect: 'none',
-    };
-    
-    return (
-      <div style={{
-        position: 'fixed',
-        bottom: '15px',
-        [side]: '10px',
-        zIndex: 300,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '2px',
-      }}>
-        <div style={{
-          background: char === 'ahmed' ? '#FF8F00' : '#D81B60',
-          color: 'white',
-          padding: '3px 10px',
-          borderRadius: '10px',
-          fontSize: '11px',
-          fontWeight: 'bold',
-          marginBottom: '4px',
-        }}>
-          {playerNum === 1 ? '🎮1' : '🎮2'} {char === 'ahmed' ? 'أحمد' : 'رورو'}
-        </div>
+      if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+        const newX = Math.max(5, Math.min(95, currentPos.x + dx));
+        const newY = Math.max(minY, Math.min(maxY, currentPos.y + dy));
         
-        <button 
-          style={btnStyle}
-          onTouchStart={(e) => { e.preventDefault(); startMove('up'); }}
-          onTouchEnd={stopMove}
-          onMouseDown={() => startMove('up')}
-          onMouseUp={stopMove}
-          onMouseLeave={stopMove}
-        >⬆️</button>
-        
-        <div style={{ display: 'flex', gap: '2px' }}>
-          <button 
-            style={btnStyle}
-            onTouchStart={(e) => { e.preventDefault(); startMove('left'); }}
-            onTouchEnd={stopMove}
-            onMouseDown={() => startMove('left')}
-            onMouseUp={stopMove}
-            onMouseLeave={stopMove}
-          >⬅️</button>
-          
-          <button 
-            style={{...btnStyle, background: '#4CAF50', width: '48px', height: '48px'}}
-            onTouchStart={(e) => { e.preventDefault(); doInteract(); }}
-            onClick={doInteract}
-          >✓</button>
-          
-          <button 
-            style={btnStyle}
-            onTouchStart={(e) => { e.preventDefault(); startMove('right'); }}
-            onTouchEnd={stopMove}
-            onMouseDown={() => startMove('right')}
-            onMouseUp={stopMove}
-            onMouseLeave={stopMove}
-          >➡️</button>
-        </div>
-        
-        <button 
-          style={btnStyle}
-          onTouchStart={(e) => { e.preventDefault(); startMove('down'); }}
-          onTouchEnd={stopMove}
-          onMouseDown={() => startMove('down')}
-          onMouseUp={stopMove}
-          onMouseLeave={stopMove}
-        >⬇️</button>
-      </div>
-    );
+        setPos({ x: newX, y: newY });
+        if (Math.abs(dx) > 0.1) setDir(dx > 0 ? 'right' : 'left');
+        setMoving(true);
+      } else {
+        setMoving(false);
+      }
+    });
+    
+    animationFrameRef.current = requestAnimationFrame(smoothMove);
+  }, [player1Char, player2Char]);
+  
+  useEffect(() => {
+    animationFrameRef.current = requestAnimationFrame(smoothMove);
+    return () => {
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    };
+  }, [smoothMove]);
+  
+  const getPlayerFromTouch = (touch) => {
+    const screenWidth = window.innerWidth;
+    return touch.clientX < screenWidth / 2 ? 'player1' : 'player2';
   };
+  
+  const screenToGame = (clientX, clientY) => {
+    const gameArea = document.getElementById('game-area');
+    if (!gameArea) return { x: 50, y: 80 };
+    
+    const rect = gameArea.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
+    return { x, y };
+  };
+  
+  const handleTouchStart = (e) => {
+    if (!['outside', 'livingRoom', 'bedroom', 'kitchen'].includes(gameState)) return;
+    
+    Array.from(e.changedTouches).forEach(touch => {
+      const player = getPlayerFromTouch(touch);
+      const gamePos = screenToGame(touch.clientX, touch.clientY);
+      
+      // Check for double tap
+      const now = Date.now();
+      if (lastTapRef.current.player === player && now - lastTapRef.current.time < 350) {
+        // Double tap - interact
+        const char = player === 'player1' ? player1Char : player2Char;
+        handleInteraction(char);
+        lastTapRef.current = { time: 0, player: null };
+      } else {
+        lastTapRef.current = { time: now, player };
+        // Start moving towards touch point
+        targetPosRef.current[player] = gamePos;
+        touchActiveRef.current[player] = touch.identifier;
+      }
+    });
+  };
+  
+  const handleTouchMove = (e) => {
+    e.preventDefault();
+    
+    Array.from(e.changedTouches).forEach(touch => {
+      const player = Object.keys(touchActiveRef.current).find(
+        p => touchActiveRef.current[p] === touch.identifier
+      );
+      if (player) {
+        const gamePos = screenToGame(touch.clientX, touch.clientY);
+        targetPosRef.current[player] = gamePos;
+      }
+    });
+  };
+  
+  const handleTouchEnd = (e) => {
+    Array.from(e.changedTouches).forEach(touch => {
+      const player = Object.keys(touchActiveRef.current).find(
+        p => touchActiveRef.current[p] === touch.identifier
+      );
+      if (player) {
+        touchActiveRef.current[player] = null;
+        targetPosRef.current[player] = null;
+        
+        const char = player === 'player1' ? player1Char : player2Char;
+        const setMoving = char === 'ahmed' ? setAhmedMoving : setRoroMoving;
+        setMoving(false);
+      }
+    });
+  };
+  
+  // Check if mobile
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   // Start Screen
   if (gameState === 'start') {
@@ -710,13 +707,19 @@ const App = () => {
   
   return (
     <div 
+      id="game-area"
       style={{
         width: '100%',
         height: '100vh',
         position: 'relative',
         overflow: 'hidden',
         fontFamily: 'Cairo, sans-serif',
+        transform: isMobile ? 'scale(0.85)' : 'scale(1)',
+        transformOrigin: 'center center',
       }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       {gameState === 'outside' && (
         <div style={{ position: 'absolute', width: '100%', height: '100%' }}>
@@ -1024,25 +1027,80 @@ const App = () => {
         )}
       </div>
       
-      {/* Mobile Joystick Controls */}
-      <MobileJoystick playerNum={1} side="left" />
-      <MobileJoystick playerNum={2} side="right" />
+      {/* Mobile touch instructions */}
+      {isMobile && (
+        <>
+          {/* Left player indicator */}
+          <div style={{
+            position: 'absolute',
+            bottom: '50px',
+            left: '15px',
+            background: player1Char === 'ahmed' ? 'rgba(255,143,0,0.9)' : 'rgba(216,27,96,0.9)',
+            color: 'white',
+            padding: '8px 12px',
+            borderRadius: '12px',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            zIndex: 200,
+            textAlign: 'center',
+          }}>
+            <div>🎮1 {player1Char === 'ahmed' ? 'أحمد' : 'رورو'}</div>
+            <div style={{ fontSize: '9px', opacity: 0.9 }}>المس واسحب</div>
+          </div>
+          
+          {/* Right player indicator */}
+          <div style={{
+            position: 'absolute',
+            bottom: '50px',
+            right: '15px',
+            background: player2Char === 'ahmed' ? 'rgba(255,143,0,0.9)' : 'rgba(216,27,96,0.9)',
+            color: 'white',
+            padding: '8px 12px',
+            borderRadius: '12px',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            zIndex: 200,
+            textAlign: 'center',
+          }}>
+            <div>🎮2 {player2Char === 'ahmed' ? 'أحمد' : 'رورو'}</div>
+            <div style={{ fontSize: '9px', opacity: 0.9 }}>المس واسحب</div>
+          </div>
+          
+          {/* Center divider */}
+          <div style={{
+            position: 'absolute',
+            top: '40%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            height: '30%',
+            width: '3px',
+            background: 'rgba(255,255,255,0.3)',
+            borderRadius: '3px',
+            zIndex: 5,
+            pointerEvents: 'none',
+          }} />
+        </>
+      )}
       
       <div style={{
         position: 'absolute',
-        bottom: '8px',
+        bottom: '10px',
         left: '50%',
         transform: 'translateX(-50%)',
-        background: 'rgba(0,0,0,0.75)',
+        background: 'rgba(0,0,0,0.8)',
         color: 'white',
-        padding: '6px 15px',
-        borderRadius: '15px',
-        fontSize: '10px',
+        padding: '8px 16px',
+        borderRadius: '20px',
+        fontSize: '11px',
         zIndex: 100,
         textAlign: 'center',
         whiteSpace: 'nowrap',
       }}>
-        ⌨️ WASD+E | ⬆️⬇️⬅️➡️+Space | 📱 استخدم الأزرار
+        {isMobile ? (
+          <>👆 المس واسحب للتحريك | انقر مرتين للتفاعل 👆</>
+        ) : (
+          <>⌨️ 🎮1: WASD+E | 🎮2: ⬆️⬇️⬅️➡️+Space</>
+        )}
       </div>
       
       <style>{`
@@ -1055,24 +1113,24 @@ const App = () => {
           50% { transform: translateY(-10px); }
         }
         
-        /* Mobile optimizations */
+        /* Prevent all default touch behaviors */
+        #game-area {
+          touch-action: none;
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          user-select: none;
+        }
+        
+        /* Smooth animations */
+        * {
+          -webkit-tap-highlight-color: transparent;
+        }
+        
         html, body {
           overflow: hidden;
           position: fixed;
           width: 100%;
           height: 100%;
-        }
-        
-        button {
-          -webkit-tap-highlight-color: transparent;
-          touch-action: manipulation;
-          user-select: none;
-          -webkit-user-select: none;
-        }
-        
-        button:active {
-          transform: scale(0.95);
-          opacity: 0.8;
         }
       `}</style>
     </div>
