@@ -10,6 +10,7 @@ const App = () => {
   
   // Delete mode for removing items
   const [deleteMode, setDeleteMode] = useState(false);
+  const [movingItem, setMovingItem] = useState(null); // {type: 'plant'/'furniture', data: item, room: 'livingRoom'}
   
   const [ahmedPos, setAhmedPos] = useState({ x: 20, y: 85 });
   const [roroPos, setRoroPos] = useState({ x: 30, y: 85 });
@@ -48,6 +49,7 @@ const App = () => {
   const placingFurnitureRef = useRef(placingFurniture);
   const plantsRef = useRef(plants);
   const furnitureRef = useRef(furniture);
+  const movingItemRef = useRef(movingItem);
   
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
   useEffect(() => { ahmedPosRef.current = ahmedPos; }, [ahmedPos]);
@@ -60,6 +62,7 @@ const App = () => {
   useEffect(() => { placingFurnitureRef.current = placingFurniture; }, [placingFurniture]);
   useEffect(() => { plantsRef.current = plants; }, [plants]);
   useEffect(() => { furnitureRef.current = furniture; }, [furniture]);
+  useEffect(() => { movingItemRef.current = movingItem; }, [movingItem]);
   
   const keysPressed = useRef(new Set());
   
@@ -74,16 +77,16 @@ const App = () => {
     setTimeout(() => setHearts(prev => prev.filter(h => h.id !== id)), 2000);
   }, []);
   
-  // Find nearby item to delete
+  // Find nearby item to pick up
   const findNearbyItem = (pos, state) => {
-    const threshold = 8;
+    const threshold = 10;
     
     if (state === 'outside') {
       // Check plants
       const plantIndex = plantsRef.current.findIndex(p => 
         Math.abs(p.x - pos.x) < threshold && Math.abs(p.y - pos.y) < threshold
       );
-      if (plantIndex !== -1) return { type: 'plant', index: plantIndex };
+      if (plantIndex !== -1) return { type: 'plant', index: plantIndex, data: plantsRef.current[plantIndex] };
     } else {
       // Check furniture
       const room = state;
@@ -91,27 +94,50 @@ const App = () => {
       const itemIndex = items.findIndex(item =>
         Math.abs(item.x - pos.x) < threshold && Math.abs(item.y - pos.y) < threshold
       );
-      if (itemIndex !== -1) return { type: 'furniture', room, index: itemIndex };
+      if (itemIndex !== -1) return { type: 'furniture', room, index: itemIndex, data: items[itemIndex] };
     }
     return null;
   };
   
-  // Delete item
-  const deleteItem = (pos, state) => {
+  // Pick up item to move
+  const pickupItem = (pos, state) => {
     const item = findNearbyItem(pos, state);
     if (item) {
+      // Remove from original position
       if (item.type === 'plant') {
         setPlants(prev => prev.filter((_, i) => i !== item.index));
-        addHeart(pos);
-        return true;
+        setMovingItem({ type: 'plant', data: item.data });
       } else if (item.type === 'furniture') {
         setFurniture(prev => ({
           ...prev,
           [item.room]: prev[item.room].filter((_, i) => i !== item.index)
         }));
-        addHeart(pos);
-        return true;
+        setMovingItem({ type: 'furniture', data: item.data, room: item.room });
       }
+      addHeart(pos);
+      return true;
+    }
+    return false;
+  };
+  
+  // Place moving item at new position
+  const placeItem = (pos, state) => {
+    const item = movingItemRef.current;
+    if (!item) return false;
+    
+    if (item.type === 'plant' && state === 'outside') {
+      setPlants(prev => [...prev, { ...item.data, x: pos.x, y: pos.y + 2 }]);
+      setMovingItem(null);
+      addHeart(pos);
+      return true;
+    } else if (item.type === 'furniture' && state !== 'outside') {
+      setFurniture(prev => ({
+        ...prev,
+        [state]: [...prev[state], { ...item.data, x: pos.x, y: pos.y }]
+      }));
+      setMovingItem(null);
+      addHeart(pos);
+      return true;
     }
     return false;
   };
@@ -120,9 +146,15 @@ const App = () => {
     const pos = char === 'ahmed' ? ahmedPosRef.current : roroPosRef.current;
     const state = gameStateRef.current;
     
-    // Delete mode - remove nearby items
+    // Move mode - pick up or place items
     if (deleteModeRef.current) {
-      if (deleteItem(pos, state)) return;
+      // If already holding something, place it
+      if (movingItemRef.current) {
+        if (placeItem(pos, state)) return;
+      } else {
+        // Try to pick up nearby item
+        if (pickupItem(pos, state)) return;
+      }
     }
     
     if (state === 'outside') {
@@ -338,22 +370,22 @@ const App = () => {
           bottom: '0',
           left: '50%',
           transform: 'translateX(-50%)',
-          width: '50px',
-          height: '12px',
+          width: '70px',
+          height: '18px',
           background: 'radial-gradient(ellipse, rgba(0,0,0,0.3) 0%, transparent 70%)',
           borderRadius: '50%',
         }} />
         
         <div style={{
           position: 'absolute',
-          top: '-28px',
+          top: '-32px',
           left: '50%',
           transform: 'translateX(-50%)',
           background: type === 'ahmed' ? '#FF8F00' : '#D81B60',
           color: 'white',
-          padding: '2px 8px',
-          borderRadius: '8px',
-          fontSize: '9px',
+          padding: '3px 10px',
+          borderRadius: '10px',
+          fontSize: '11px',
           fontWeight: 'bold',
           whiteSpace: 'nowrap',
         }}>
@@ -364,7 +396,7 @@ const App = () => {
           transform: `scaleX(${direction === 'left' ? -1 : 1}) translateY(${-bounce + breathe}px)`,
           transformOrigin: 'bottom center',
         }}>
-          <img src={`/assets/${type === 'ahmed' ? 'Ahmed' : 'Roro'}.png`} alt={type} style={{ height: '80px' }} />
+          <img src={`/assets/${type === 'ahmed' ? 'Ahmed' : 'Roro'}.png`} alt={type} style={{ height: '140px' }} />
         </div>
       </div>
     );
@@ -377,16 +409,18 @@ const App = () => {
       top: `${plant.y}%`,
       transform: 'translate(-50%, -100%)',
       zIndex: Math.floor(plant.y),
-      border: deleteMode ? '2px dashed #f44336' : 'none',
+      border: deleteMode ? '3px dashed #FF9800' : 'none',
       borderRadius: '8px',
-      padding: deleteMode ? '2px' : '0',
+      padding: deleteMode ? '4px' : '0',
+      background: deleteMode ? 'rgba(255,152,0,0.1)' : 'transparent',
+      cursor: deleteMode ? 'pointer' : 'default',
     }}>
-      <img src={`/assets/${plant.type}.png`} alt={plant.type} style={{ height: '50px' }} />
+      <img src={`/assets/${plant.type}.png`} alt={plant.type} style={{ height: '80px' }} />
     </div>
   );
   
   const FurnitureItem = ({ item }) => {
-    const sizes = { sofa: '100px', table: '80px', lamp: '90px', bed: '110px', fridge: '100px', stove: '90px' };
+    const sizes = { sofa: '180px', table: '140px', lamp: '160px', bed: '200px', fridge: '180px', stove: '160px' };
     return (
       <div style={{
         position: 'absolute',
@@ -394,9 +428,11 @@ const App = () => {
         top: `${item.y}%`,
         transform: 'translate(-50%, -100%)',
         zIndex: Math.floor(item.y),
-        border: deleteMode ? '2px dashed #f44336' : 'none',
+        border: deleteMode ? '3px dashed #FF9800' : 'none',
         borderRadius: '8px',
-        padding: deleteMode ? '2px' : '0',
+        padding: deleteMode ? '4px' : '0',
+        background: deleteMode ? 'rgba(255,152,0,0.1)' : 'transparent',
+        cursor: deleteMode ? 'pointer' : 'default',
       }}>
         <img src={`/assets/${item.type}.png`} alt={item.type} style={{ height: sizes[item.type] || '80px' }} />
       </div>
@@ -468,8 +504,8 @@ const App = () => {
         <p style={{ margin: '0 0 15px' }}>ابنوا بيت أحلامكم سوا!</p>
         
         <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-          <img src="/assets/Ahmed.png" alt="Ahmed" style={{ height: '70px' }} />
-          <img src="/assets/Roro.png" alt="Roro" style={{ height: '70px' }} />
+          <img src="/assets/Ahmed.png" alt="Ahmed" style={{ height: '100px' }} />
+          <img src="/assets/Roro.png" alt="Roro" style={{ height: '100px' }} />
         </div>
         
         <button onClick={() => setGameState('selectP1')} style={{
@@ -521,7 +557,7 @@ const App = () => {
             onMouseEnter={e => e.target.style.border = '3px solid #FF8F00'}
             onMouseLeave={e => e.target.style.border = '3px solid transparent'}
           >
-            <img src="/assets/Ahmed.png" alt="Ahmed" style={{ height: '120px' }} />
+            <img src="/assets/Ahmed.png" alt="Ahmed" style={{ height: '150px' }} />
             <p style={{ margin: '10px 0 0', fontSize: '18px', fontWeight: 'bold' }}>⭐ أحمد</p>
           </div>
           
@@ -538,7 +574,7 @@ const App = () => {
             onMouseEnter={e => e.target.style.border = '3px solid #D81B60'}
             onMouseLeave={e => e.target.style.border = '3px solid transparent'}
           >
-            <img src="/assets/Roro.png" alt="Roro" style={{ height: '120px' }} />
+            <img src="/assets/Roro.png" alt="Roro" style={{ height: '150px' }} />
             <p style={{ margin: '10px 0 0', fontSize: '18px', fontWeight: 'bold' }}>💖 رورو</p>
           </div>
         </div>
@@ -577,7 +613,7 @@ const App = () => {
             border: `3px solid ${otherChar === 'ahmed' ? '#FF8F00' : '#D81B60'}`,
           }}
         >
-          <img src={`/assets/${otherChar === 'ahmed' ? 'Ahmed' : 'Roro'}.png`} alt={otherChar} style={{ height: '120px' }} />
+          <img src={`/assets/${otherChar === 'ahmed' ? 'Ahmed' : 'Roro'}.png`} alt={otherChar} style={{ height: '150px' }} />
           <p style={{ margin: '10px 0 0', fontSize: '18px', fontWeight: 'bold' }}>
             {otherChar === 'ahmed' ? '⭐ أحمد' : '💖 رورو'}
           </p>
@@ -694,6 +730,25 @@ const App = () => {
         }}>💕</div>
       ))}
       
+      {/* Moving item indicator - follows first character */}
+      {movingItem && (
+        <div style={{
+          position: 'absolute',
+          left: `${ahmedPos.x + 5}%`,
+          top: `${ahmedPos.y - 15}%`,
+          zIndex: 600,
+          animation: 'bounce 0.5s infinite',
+          pointerEvents: 'none',
+          filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
+        }}>
+          {movingItem.type === 'plant' ? (
+            <img src={`/assets/${movingItem.data.type}.png`} alt="moving" style={{ height: '50px', opacity: 0.9 }} />
+          ) : (
+            <img src={`/assets/${movingItem.data.type}.png`} alt="moving" style={{ height: '60px', opacity: 0.9 }} />
+          )}
+        </div>
+      )}
+      
       {/* Instructions */}
       {gameState === 'outside' && nearHouse && !paintMode && !plantMode && !deleteMode && (
         <div style={{
@@ -719,7 +774,7 @@ const App = () => {
           top: '8%',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: '#f44336',
+          background: movingItem ? '#FF9800' : '#f44336',
           color: 'white',
           padding: '10px 20px',
           borderRadius: '20px',
@@ -727,7 +782,11 @@ const App = () => {
           fontWeight: 'bold',
           zIndex: 100,
         }}>
-          🗑️ وضع الحذف - روح للعنصر واضغط E أو Space
+          {movingItem ? (
+            <>📦 شايل {movingItem.type === 'plant' ? 'نبات' : 'أثاث'} - روح للمكان الجديد واضغط E أو Space</>
+          ) : (
+            <>🔄 وضع النقل - روح للعنصر واضغط E أو Space لشيله</>
+          )}
         </div>
       )}
       
@@ -776,20 +835,32 @@ const App = () => {
         fontSize: '11px',
       }}>
         {/* Delete mode button - always visible */}
-        <button onClick={() => { setDeleteMode(!deleteMode); setPaintMode(false); setPlantMode(false); setPlacingFurniture(null); }} style={{
+        <button onClick={() => { 
+          setDeleteMode(!deleteMode); 
+          setPaintMode(false); 
+          setPlantMode(false); 
+          setPlacingFurniture(null);
+          if (deleteMode) setMovingItem(null); // Cancel moving when exiting mode
+        }} style={{
           width: '100%',
           padding: '8px',
           marginBottom: '5px',
           borderRadius: '8px',
           border: 'none',
-          background: deleteMode ? '#f44336' : '#ffebee',
+          background: deleteMode ? (movingItem ? '#FF9800' : '#f44336') : '#ffebee',
           color: deleteMode ? 'white' : '#c62828',
           fontWeight: 'bold',
           cursor: 'pointer',
           fontFamily: 'Cairo',
         }}>
-          🗑️ {deleteMode ? 'إلغاء الحذف' : 'حذف/نقل'}
+          {deleteMode ? (movingItem ? '📦 شايل عنصر...' : '🗑️ وضع النقل ✓') : '🔄 نقل/حذف'}
         </button>
+        
+        {deleteMode && (
+          <p style={{ fontSize: '9px', color: '#666', margin: '0 0 5px', textAlign: 'center' }}>
+            {movingItem ? 'روح للمكان الجديد واضغط ✓' : 'روح للعنصر واضغط ✓ لشيله'}
+          </p>
+        )}
         
         {gameState === 'outside' && (
           <>
@@ -912,6 +983,10 @@ const App = () => {
         @keyframes floatUp {
           0% { opacity: 1; transform: translateY(0) scale(1); }
           100% { opacity: 0; transform: translateY(-50px) scale(1.3); }
+        }
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
         }
       `}</style>
     </div>
